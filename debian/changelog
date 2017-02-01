@@ -1,0 +1,5 @@
+pam-ussh (1.0) all; urgency=low
+
+  * Initial release.
+
+ -- Peter Moody <pmoody@uber.com>  Fri, 19 Aug 2016 01:23:45 +0600
