@@ -68,13 +68,14 @@ auth [success=1 default=ignore] /lib/security/pam_ussh.so ca_file=/etc/ssh/user_
 FAQ:
 
 * does this work with non-certificate ssh-keys?
-  A: no, not at the moment. there's no reason it can't though, we just didn't need it to do that so I never added the functionality.
+  - No, not at the moment. 
+  - There's no reason it can't though, we just didn't need it to do that so I never added the functionality
 
 * why aren't you using $DEP_SYSTEM?
-  A: we didn't need to so we didn't bother.
+  - We didn't need to so we didn't bother
 
 * can you make it do $X?
-  A: submit a feature request, or better yet a pull request.
+  - Submit a feature request, or better yet a pull request
 
 Information on ssh certificates:
 * http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.certkeys?rev=HEAD
