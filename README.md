@@ -29,7 +29,8 @@ Building:
 ```
 
 Usage:
-1. put this pam module where ever pam modules live on your system, eg. /lib/security
+
+1. put this pam module where ever pam modules live on your system, eg. `/lib/security`
 
 2. add it as an authentication method, eg.
 
@@ -67,6 +68,9 @@ auth [success=1 default=ignore] /lib/security/pam_ussh.so ca_file=/etc/ssh/user_
 
 FAQ:
 
+* How do I report a security issue?
+  - Please report security issues at the [hackerone bug bounty page](https://hackerone.com/uber) and the bugbounty folks will determine bounty eligibility
+
 * does this work with non-certificate ssh-keys?
   - No, not at the moment. 
   - There's no reason it can't though, we just didn't need it to do that so I never added the functionality
@@ -76,6 +80,7 @@ FAQ:
 
 * can you make it do $X?
   - Submit a feature request, or better yet a pull request
+
 
 Information on ssh certificates:
 * http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.certkeys?rev=HEAD
