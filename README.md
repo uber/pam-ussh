@@ -68,18 +68,19 @@ auth [success=1 default=ignore] /lib/security/pam_ussh.so ca_file=/etc/ssh/user_
 
 FAQ:
 
-1. How do I report a security issue?
+* How do I report a security issue?
+  - Please report security issues at the [hackerone bug bounty page](https://hackerone.com/uber) and the bugbounty folks will determine bounty eligibility
 
-  * Please report security issues at the [hackerone bug bounty page](https://hackerone.com/uber) and the bugbounty folks will determine bounty eligibility.
+* does this work with non-certificate ssh-keys?
+  - No, not at the moment. 
+  - There's no reason it can't though, we just didn't need it to do that so I never added the functionality
 
-2. does this work with non-certificate ssh-keys?
-  A: no, not at the moment. there's no reason it can't though, we just didn't need it to do that so I never added the functionality.
+* why aren't you using $DEP_SYSTEM?
+  - We didn't need to so we didn't bother
 
-3. why aren't you using $DEP_SYSTEM?
-  A: we didn't need to so we didn't bother.
+* can you make it do $X?
+  - Submit a feature request, or better yet a pull request
 
-4. can you make it do $X?
-  A: submit a feature request, or better yet a pull request.
 
 Information on ssh certificates:
 * http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.certkeys?rev=HEAD
