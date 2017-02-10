@@ -57,7 +57,7 @@ func TestNoAuthSock(t *testing.T) {
 	defer os.Setenv("SSH_AUTH_SOCK", oldAgent)
 	os.Unsetenv("SSH_AUTH_SOCK")
 	b := new(bytes.Buffer)
-	require.Equal(t, AuthError, authenticate(b, "", nil))
+	require.Equal(t, AuthError, authenticate(b, 0, "", "", nil))
 	require.Contains(t, b.String(), "No SSH_AUTH_SOCK")
 }
 
@@ -69,7 +69,7 @@ func TestBadAuthSock(t *testing.T) {
 		defer os.Setenv("SSH_AUTH_SOCK", oldAgent)
 		os.Setenv("SSH_AUTH_SOCK", s)
 		b := new(bytes.Buffer)
-		require.Equal(t, AuthError, authenticate(b, "", nil))
+		require.Equal(t, AuthError, authenticate(b, 0, "", "", nil))
 		require.Contains(t, b.String(), "connect: no such file or directory")
 	})
 }
@@ -81,7 +81,7 @@ func TestBadCA(t *testing.T) {
 			k, e := rsa.GenerateKey(rand.Reader, 1024)
 			require.NoError(t, e)
 			require.NoError(t, a.Add(agent.AddedKey{PrivateKey: k}))
-			require.Equal(t, AuthError, authenticate(new(bytes.Buffer), ca, nil))
+			require.Equal(t, AuthError, authenticate(new(bytes.Buffer), 0, "", ca, nil))
 		})
 	})
 }
@@ -98,7 +98,7 @@ func TestAuthorize_NoKeys(t *testing.T) {
 		e = ioutil.WriteFile(ca, ssh.MarshalAuthorizedKey(pub), 0444)
 
 		WithSSHAgent(func(a agent.Agent) {
-			r := authenticate(new(bytes.Buffer), ca, p)
+			r := authenticate(new(bytes.Buffer), 0, "", ca, p)
 			require.Equal(t, AuthError, r)
 		})
 	})
@@ -129,27 +129,27 @@ func TestPamAuthorize(t *testing.T) {
 			a.Add(agent.AddedKey{PrivateKey: userPriv, Certificate: c})
 
 			// test with no principal
-			r := pamAuthenticate(new(bytes.Buffer), "foober", []string{caPamOpt})
+			r := pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt})
 			require.Equal(t, AuthSuccess, r,
 				"authenticate failed when it should've succeeded")
 
-			// negative test with authorized_principals pam option
-			r = pamAuthenticate(new(bytes.Buffer), "foober", []string{caPamOpt,
+			// negative test with authorized_principals pam 2option
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
 				fmt.Sprintf("authorized_principals=group:boober")})
 			require.Equal(t, AuthError, r)
 
 			// positive test with authorized_principals_file pam option
-			r = pamAuthenticate(new(bytes.Buffer), "foober", []string{caPamOpt,
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
 				fmt.Sprintf("authorized_principals_file=%s", principals)})
 			require.Equal(t, AuthSuccess, r)
 
 			// negative test with a bad authorized_principals_file pam option
-			r = pamAuthenticate(new(bytes.Buffer), "foober", []string{caPamOpt,
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
 				"authorized_principals_file=foober"})
 			require.Equal(t, AuthError, r)
 
 			// test that a user not in the required group passes.
-			r = pamAuthenticate(new(bytes.Buffer), "foober", []string{caPamOpt,
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
 				"group=nosuchgroup"})
 			require.Equal(t, AuthSuccess, r)
 		})

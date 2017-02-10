@@ -66,16 +66,36 @@ func pamLog(format string, args ...interface{}) {
 
 // authenticate validates certs loaded on the ssh-agent at the other end of
 // AuthSock.
-func authenticate(w io.Writer, ca string, principals map[string]struct{}) AuthResult {
+func authenticate(w io.Writer, uid int, username, ca string, principals map[string]struct{}) AuthResult {
 	authSock := os.Getenv("SSH_AUTH_SOCK")
 	if authSock == "" {
 		fmt.Fprint(w, "No SSH_AUTH_SOCK")
 		return AuthError
 	}
 
+	// store for later error message just in case.
+	ownerUID := fileUID(authSock)
+
+	origEUID := os.Geteuid()
+	if os.Getuid() != origEUID || origEUID == 0 {
+		// Note: this only sets the euid and doesn't do anything with the egid.
+		// That should be fine for most cases, but it's worth calling out.
+		if !seteuid(uid) {
+			pamLog("error dropping privs from %d to %d", origEUID, uid)
+			return AuthError
+		}
+		defer func() {
+			if !seteuid(origEUID) {
+				pamLog("error resetting uid to %d", origEUID)
+			}
+		}()
+	}
+
 	agentSock, err := net.Dial("unix", authSock)
 	if err != nil {
-		fmt.Fprintf(w, "%v", err)
+		fmt.Fprintf(w, "error connecting to %s: %v\n", authSock, err)
+		pamLog("error opening auth sock (sock owner: %d/%s) by (caller: %d/%s)",
+			ownerUID, getUsername(ownerUID), os.Getuid(), username)
 		return AuthError
 	}
 
@@ -174,7 +194,7 @@ func loadValidPrincipals(principals string) (map[string]struct{}, error) {
 	return p, nil
 }
 
-func pamAuthenticate(w io.Writer, user string, argv []string) AuthResult {
+func pamAuthenticate(w io.Writer, uid int, username string, argv []string) AuthResult {
 	runtime.GOMAXPROCS(1)
 
 	userCA := defaultUserCA
@@ -207,7 +227,7 @@ func pamAuthenticate(w io.Writer, user string, argv []string) AuthResult {
 	}
 
 	if len(group) == 0 || isMemberOf(group) {
-		return authenticate(w, userCA, authorizedPrincipals)
+		return authenticate(w, uid, username, userCA, authorizedPrincipals)
 	}
 
 	return AuthSuccess

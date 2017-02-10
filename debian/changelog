@@ -1,3 +1,9 @@
+pam-ussh (1.0.1) all; urgency=low
+
+  * fix security issue reported by Solar Designer.
+
+ -- Peter Moody <pmoody@uber.com>  Fri, 10 Feb 2017 01:23:45 +0000
+
 pam-ussh (1.0) all; urgency=low
 
   * Initial release.

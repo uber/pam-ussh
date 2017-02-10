@@ -23,10 +23,9 @@ THE SOFTWARE.
 package main
 
 /*
-#include <unistd.h>
-#include <sys/types.h>
 #include <grp.h>
 #include <stdlib.h> // for C.free
+#include <sys/types.h>
 
 int group_member(int gid);
 struct group *getgrnam(const char *name);
