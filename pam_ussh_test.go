@@ -133,6 +133,10 @@ func TestPamAuthorize(t *testing.T) {
 			require.Equal(t, AuthSuccess, r,
 				"authenticate failed when it should've succeeded")
 
+			// test that the wrong principal fails
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "duber", []string{caPamOpt})
+			require.Equal(t, AuthError, r)
+
 			// negative test with authorized_principals pam 2option
 			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
 				fmt.Sprintf("authorized_principals=group:boober")})

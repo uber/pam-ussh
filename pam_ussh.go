@@ -139,7 +139,7 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 			continue
 		}
 
-		if err := c.CheckCert(cert.ValidPrincipals[0], cert); err != nil {
+		if err := c.CheckCert(username, cert); err != nil {
 			continue
 		}
 
