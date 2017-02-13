@@ -56,8 +56,8 @@ char *get_user(pam_handle_t *pamh) {
   return strdup(user);
 }
 
-// file_uid returns the uid that owns a file.
-int file_uid(char *path) {
+// owner_uid returns the owner of a given file, if can be read.
+int owner_uid(char *path) {
   struct stat sb;
   int ret = -1;
   if ((ret = stat(path, &sb)) < 0) {
@@ -118,13 +118,12 @@ import (
 	"unsafe"
 )
 
-// fileUID returns the uid of the owner of a given file, and
-// true if the file is owned by the given uid.
-func fileUID(path string) int {
+// ownerUID returns the uid of the owner of a given file or directory.
+func ownerUID(path string) int {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 
-	return int(C.file_uid(cPath))
+	return int(C.owner_uid(cPath))
 }
 
 // getUID is used for testing.

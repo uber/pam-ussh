@@ -34,6 +34,7 @@ import (
 	"log/syslog"
 	"net"
 	"os"
+	"path"
 	"runtime"
 	"strings"
 
@@ -73,9 +74,6 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 		return AuthError
 	}
 
-	// store for later error message just in case.
-	ownerUID := fileUID(authSock)
-
 	origEUID := os.Geteuid()
 	if os.Getuid() != origEUID || origEUID == 0 {
 		// Note: this only sets the euid and doesn't do anything with the egid.
@@ -94,6 +92,9 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 	agentSock, err := net.Dial("unix", authSock)
 	if err != nil {
 		fmt.Fprintf(w, "error connecting to %s: %v\n", authSock, err)
+		// if we're here, we probably can't stat the socket to get the owner uid
+		// to decorate the logs, but we might be able to read the parent directory.
+		ownerUID := ownerUID(path.Dir(authSock))
 		pamLog("error opening auth sock (sock owner: %d/%s) by (caller: %d/%s)",
 			ownerUID, getUsername(ownerUID), os.Getuid(), username)
 		return AuthError
