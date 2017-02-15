@@ -3,11 +3,13 @@ Uber's SSH certificate pam module.
 This is a pam module that will authenticate a user based on them having an ssh certificate in
 their ssh-agent signed by a specified ssh CA. 
 
-This is meant for things that require authentication post-login, usually on a remote system. 
-So you ssh to `machineA` and sshd authenticates you (probably using your ssh cert, because if 
-you're using it for this, you're probably using it for sshd as well). At that point when you 
-want to run a command that requires authentication (eg. `sudo`), you can use pam-ussh for 
-authentication.
+This is primarily intended as an authentication module for sudo. Using it for something else 
+may be unsafe (we haven't tested it anyway). We'd be happy to learn of other potential uses though.
+
+An example usage would be you ssh to a remote machine and sshd authenticates you (probably 
+using your ssh cert, because if you're using it for this, you're probably using it for sshd 
+as well). At that point when you want to run a command that requires authentication (eg. 
+`sudo`), you can use pam-ussh for authentication.
 
 Works on linux and osx. BSD doesn't work because go doesn't (yet) support `buildmode=c-shared`
 on bsd.
