@@ -118,14 +118,29 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 		return AuthError
 	}
 
-	caPubkey, _, _, _, err := ssh.ParseAuthorizedKey(caBytes)
-	if err != nil {
-		return AuthError
+	var caPubkeys []ssh.PublicKey
+	in := caBytes
+	for {
+		pubKey, _, _, rest, err := ssh.ParseAuthorizedKey(in)
+		if err != nil {
+			pamLog("skipping bad public key: %v", err)
+		} else {
+			caPubkeys = append(caPubkeys, pubKey)
+		}
+		if len(rest) == 0 {
+			break
+		}
+		in = rest
 	}
 
 	c := &ssh.CertChecker{
 		IsUserAuthority: func(auth ssh.PublicKey) bool {
-			return bytes.Equal(auth.Marshal(), caPubkey.Marshal())
+			for _, k := range caPubkeys {
+				if bytes.Equal(auth.Marshal(), k.Marshal()) {
+					return true
+				}
+			}
+			return false
 		},
 	}
 
