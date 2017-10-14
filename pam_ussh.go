@@ -124,7 +124,7 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 	}
 
 	c := &ssh.CertChecker{
-		IsAuthority: func(auth ssh.PublicKey) bool {
+		IsUserAuthority: func(auth ssh.PublicKey) bool {
 			return bytes.Equal(auth.Marshal(), caPubkey.Marshal())
 		},
 	}
