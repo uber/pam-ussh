@@ -38,6 +38,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/stripe/krl"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -45,6 +46,7 @@ import (
 var (
 	defaultUserCA = "/etc/ssh/trusted_user_ca"
 	defaultGroup  = ""
+	defaultKRL = ""
 )
 
 // AuthResult is the result of the authentcate function.
@@ -68,6 +70,10 @@ func pamLog(format string, args ...interface{}) {
 // authenticate validates certs loaded on the ssh-agent at the other end of
 // AuthSock.
 func authenticate(w io.Writer, uid int, username, ca string, principals map[string]struct{}) AuthResult {
+	return authenticate2(w, uid, username, ca, principals, "")
+}
+
+func authenticate2(w io.Writer, uid int, username, ca string, principals map[string]struct{}, krlFile string) AuthResult {
 	authSock := os.Getenv("SSH_AUTH_SOCK")
 	if authSock == "" {
 		fmt.Fprint(w, "No SSH_AUTH_SOCK")
@@ -116,6 +122,22 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 	if err != nil {
 		pamLog("error reading ca: %v\n", err)
 		return AuthError
+	}
+
+	var parsedKRL *krl.KRL
+	parsedKRL = nil
+	if len(krlFile) > 0 {
+		pamLog("Reading the KRL at %s....", krlFile)
+		krlBytes, err := ioutil.ReadFile(krlFile)
+		if err != nil {
+			pamLog("error reading krlFile: %v\n", err)
+			return AuthError
+		}
+		parsedKRL, err = krl.ParseKRL(krlBytes)
+		if err != nil {
+			pamLog("error parsing krlFile: %v\n", err)
+			return AuthError
+		}
 	}
 
 	var caPubkeys []ssh.PublicKey
@@ -178,6 +200,14 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 			return AuthError
 		}
 
+		if parsedKRL != nil {
+			pamLog("Checking for cert %d in KRL", cert.Serial)
+			if parsedKRL.IsRevoked(cert) {
+				pamLog("Cert %d was revoked", cert.Serial)
+				continue
+			}
+		}
+
 		if len(principals) == 0 {
 			pamLog("Authentication succeeded for %s, cert %d", cert.ValidPrincipals[0], cert.Serial)
 			return AuthSuccess
@@ -216,6 +246,7 @@ func pamAuthenticate(w io.Writer, uid int, username string, argv []string) AuthR
 	userCA := defaultUserCA
 	group := defaultGroup
 	authorizedPrincipals := make(map[string]struct{})
+	krlFile := defaultKRL
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
@@ -237,13 +268,16 @@ func pamAuthenticate(w io.Writer, uid int, username string, argv []string) AuthR
 				return AuthError
 			}
 			authorizedPrincipals = ap
+		case "revoked_keys_file":
+			krlFile = opt[1]
+			pamLog("revoked_keys_file set to %s", krlFile)
 		default:
 			pamLog("unkown option: %s\n", opt[0])
 		}
 	}
 
 	if len(group) == 0 || isMemberOf(group) {
-		return authenticate(w, uid, username, userCA, authorizedPrincipals)
+		return authenticate2(w, uid, username, userCA, authorizedPrincipals, krlFile)
 	}
 
 	return AuthSuccess
