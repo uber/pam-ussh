@@ -61,7 +61,7 @@ Runtime configuration options:
   If set, users need to have a principal listed in this file in order to use this module.
   If this and `authorized_principals` are both set, only the last option listed is checked.
 
-* `revoked_keys_file` - string, path to a KRL, default `""`.
+* `revoked_keys_file` - string, path to a KRL (Key Revocation List), default `""`.
   If set, the file must be readable and the user's certificate must not be referenced in the file.
   For more information on KRLs, see the KEY REVOCATION LISTS section in ssh-keygen(1). Also, see
   the RevokedKeys option in sshd_config(5).
