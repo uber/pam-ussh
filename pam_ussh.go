@@ -179,7 +179,8 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 		}
 
 		if len(principals) == 0 {
-			pamLog("Authentication succeeded for %s, cert %d", cert.ValidPrincipals[0], cert.Serial)
+			pamLog("Authentication succeeded for %q (cert %q, %d)",
+				username, cert.ValidPrincipals[0], cert.Serial)
 			return AuthSuccess
 		}
 
