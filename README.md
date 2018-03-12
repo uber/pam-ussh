@@ -49,6 +49,8 @@ Usage:
   auth required                   pam_permit.so
 ```
 
+3. make sure your SSH_AUTH_SOCK is available where you want to use this (eg. ssh -A user@host)
+
 Runtime configuration options:
 * `ca_file` - string, the path to your TrustedUserCAKeys file, default `/etc/ssh/trusted_user_ca`.
   This is the pubkey that signs your user certificates.
