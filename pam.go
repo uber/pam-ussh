@@ -27,6 +27,9 @@ package main
 // code in here can't be tested because it relies on cgo. :(
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"unsafe"
 )
@@ -78,7 +81,50 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 	return C.PAM_SUCCESS
 }
 
+func authorize(username string) bool {
+	jsonFile, err := os.Open("users.json")
+	if err != nil {
+		panic(err)
+	}
+
+	jsonStr, _ := ioutil.ReadAll(jsonFile)
+	jsonMap := make(map[string]interface{})
+
+	err = json.Unmarshal([]byte(jsonStr), &jsonMap)
+	if err != nil {
+		panic(err)
+	}
+
+	if jsonMap[username] == "admin" {
+		fmt.Printf("User %s is in `admin` group\n", username)
+		return true
+	}
+
+	fmt.Printf("User %s is not in `admin` group\n", username)
+	return false
+}
+
+// export pam_sm_acct_mgmt
+func pam_sm_acct_mgmt(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char) C.int {
+	cUsername := C.get_user(pamh)
+	if cUsername == nil {
+		return C.PAM_USER_UNKNOWN
+	}
+	defer C.free(unsafe.Pointer(cUsername))
+
+	username := C.GoString(cUsername)
+	if authorize(username) {
+		return C.PAM_AUTH_ERR
+	}
+	return C.PAM_SUCCESS
+}
+
 //export pam_sm_setcred
 func pam_sm_setcred(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char) C.int {
 	return C.PAM_IGNORE
 }
+
+// func main() {
+// 	username := "admin"
+// 	authorize(username)
+// }
