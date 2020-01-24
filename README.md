@@ -14,13 +14,20 @@ as well). At that point when you want to run a command that requires authenticat
 Works on linux and osx. BSD doesn't work because go doesn't (yet) support `buildmode=c-shared`
 on bsd.
 
+
 Building:
 
-1. clone the repo and run 'make'
-```
-  $ git clone github.com/uber/pam-ussh
-
-  ...
+1. Install Pre-reqs:
+   
+   Ubuntu:
+       apt install libpam0g-dev make golang-go git
+       
+   Centos:
+       yum install git go pam-devel
+       
+2. Run git clone https://github.com/uber/pam-ussh.git
+3. Run cd pam-ussh
+4. Run make
 
   $ make
   mkdir -p /home/pmoody/tmp/pam-ussh/.go/src
