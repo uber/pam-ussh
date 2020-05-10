@@ -163,7 +163,7 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 		// have the private key
 		randBytes := make([]byte, 32)
 		if _, err := rand.Read(randBytes); err != nil {
-			pamLog("Error grabbing random bytes: %v\n", err)
+			pamLog("error grabbing random bytes: %v\n", err)
 			return AuthError
 		}
 
@@ -179,14 +179,14 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 		}
 
 		if len(principals) == 0 {
-			pamLog("Authentication succeeded for %q (cert %q, %d)",
+			pamLog("authentication succeeded for %q (cert %q, %d)",
 				username, cert.ValidPrincipals[0], cert.Serial)
 			return AuthSuccess
 		}
 
 		for _, p := range cert.ValidPrincipals {
 			if _, ok := principals[p]; ok {
-				pamLog("Authentication succeded for %s. Matched principal %s, cert %d",
+				pamLog("authentication succeded for %s. Matched principal %s, cert %d",
 					cert.ValidPrincipals[0], p, cert.Serial)
 				return AuthSuccess
 			}
