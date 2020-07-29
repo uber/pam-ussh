@@ -27,7 +27,6 @@ package main
 // code in here can't be tested because it relies on cgo. :(
 
 import (
-	"os"
 	"unsafe"
 )
 
@@ -38,6 +37,7 @@ import (
 
 char *string_from_argv(int, char**);
 char *get_user(pam_handle_t *pamh);
+char *get_authtok(pam_handle_t *pamh);
 int get_uid(char *user);
 */
 import "C"
@@ -71,7 +71,13 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 		return C.PAM_USER_UNKNOWN
 	}
 
-	r := pamAuthenticate(os.Stderr, uid, C.GoString(cUsername), sliceFromArgv(argc, argv))
+	cAuthToken := C.get_authtok(pamh)
+	if cAuthToken == nil {
+		return C.PAM_AUTH_ERR
+	}
+	defer C.free(unsafe.Pointer(cAuthToken))
+
+	r := pamAuthenticate(uid, C.GoString(cUsername), C.GoString(cAuthToken), sliceFromArgv(argc, argv))
 	if r == AuthError {
 		return C.PAM_AUTH_ERR
 	}

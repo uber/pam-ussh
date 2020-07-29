@@ -2,6 +2,7 @@ package main
 
 /*
 Copyright (c) 2017 Uber Technologies, Inc.
+Copyright (c) 2020 Bolke de Bruin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -54,6 +55,19 @@ char *get_user(pam_handle_t *pamh) {
     return NULL;
 
   return strdup(user);
+}
+
+// get_authtok pulls the authentication token out of the pam handle.
+char *get_authtok(pam_handle_t *pamh) {
+  if (!pamh)
+    return NULL;
+
+  int pam_err = 0;
+  const char *authtok;
+  if ((pam_err = pam_get_item(pamh, PAM_AUTHTOK, (const void**)&authtok)) != PAM_SUCCESS)
+    return NULL;
+
+  return strdup(authtok);
 }
 
 // owner_uid returns the owner of a given file, if can be read.
