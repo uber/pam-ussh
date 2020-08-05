@@ -53,34 +53,31 @@ func pamLog(format string, args ...interface{}) {
 }
 
 // authenticate validates the token
-func authenticate(uid int, username, authToken, clientId, providerUrl string) AuthResult {
+func authenticate(uid int, username, authToken, clientId, providerUrl string) (string, AuthResult) {
 	ctx := context.Background()
 	provider, err := oidc.NewProvider(ctx, providerUrl)
 	if err != nil {
 		pamLog("cannot get oidc provider due to %s", err)
-		return AuthError
+		return "", AuthError
+	}
+	if authToken == "" {
+		authToken = username
 	}
 	verifier := provider.Verifier(&oidc.Config{ClientID: clientId})
 	idToken, err := verifier.Verify(ctx, authToken)
 	if err != nil {
 		pamLog("token verification failed: %s", err)
-		return AuthError
+		return "", AuthError
 	}
 
-	if idToken.Subject != username {
-		pamLog("token verification failed authenticating user %s != %s", username, idToken.Subject)
-		return AuthError
-	}
-
-	return AuthSuccess
+	return idToken.Subject, AuthSuccess
 }
 
-func pamAuthenticate(uid int, username string, authToken string, argv []string) AuthResult {
+func pamAuthenticate(uid int, username string, authToken string, argv []string) (string, AuthResult) {
 	runtime.GOMAXPROCS(1)
 
 	var clientId string
 	var providerUrl string
-	splitUser := false
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
@@ -91,8 +88,6 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 		case "provider_url":
 			providerUrl = opt[1]
 			pamLog("provider url set to %s", providerUrl)
-		case "split_username":
-			splitUser = true
 		default:
 			pamLog("unkown option: %s\n", opt[0])
 		}
@@ -100,11 +95,7 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 
 	if len(clientId) == 0 || len(providerUrl) == 0 {
 		pamLog("client_id and/or provider_url not set")
-		return AuthError
-	}
-
-	if !splitUser && len(authToken) == 0 {
-		return AuthError
+		return "", AuthError
 	}
 
 	return authenticate(uid, username, authToken, clientId, providerUrl)
