@@ -80,6 +80,7 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 
 	var clientId string
 	var providerUrl string
+	splitUser := false
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
@@ -90,6 +91,8 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 		case "provider_url":
 			providerUrl = opt[1]
 			pamLog("provider url set to %s", providerUrl)
+		case "split_username":
+			splitUser = true
 		default:
 			pamLog("unkown option: %s\n", opt[0])
 		}
@@ -97,6 +100,10 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 
 	if len(clientId) == 0 || len(providerUrl) == 0 {
 		pamLog("client_id and/or provider_url not set")
+		return AuthError
+	}
+
+	if !splitUser && len(authToken) == 0 {
 		return AuthError
 	}
 
