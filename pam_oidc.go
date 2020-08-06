@@ -26,13 +26,18 @@ THE SOFTWARE.
 package main
 
 import (
-	"context"
 	"fmt"
-	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/dgrijalva/jwt-go/v4"
 	"log/syslog"
 	"runtime"
 	"strings"
 )
+
+type customClaims struct {
+	RemoteServer string `json:"remoteServer"`
+	ClientIP	 string `json:"clientIp"`
+	jwt.StandardClaims
+}
 
 // AuthResult is the result of the authentcate function.
 type AuthResult int
@@ -53,52 +58,64 @@ func pamLog(format string, args ...interface{}) {
 }
 
 // authenticate validates the token
-func authenticate(uid int, username, authToken, clientId, providerUrl string) (string, AuthResult) {
-	ctx := context.Background()
-	provider, err := oidc.NewProvider(ctx, providerUrl)
-	if err != nil {
-		pamLog("cannot get oidc provider due to %s", err)
-		return "", AuthError
-	}
-	if authToken == "" {
-		authToken = username
-	}
-	verifier := provider.Verifier(&oidc.Config{ClientID: clientId})
-	idToken, err := verifier.Verify(ctx, authToken)
+func authenticate(uid int, username, authToken, secret, alg, issuer, domain string) (string, AuthResult) {
+	token, err := jwt.ParseWithClaims(authToken, &customClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if alg != token.Method.Alg() {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(secret), nil
+	})
+
 	if err != nil {
 		pamLog("token verification failed: %s", err)
 		return "", AuthError
 	}
 
-	return idToken.Subject, AuthSuccess
+	if claims, ok := token.Claims.(*customClaims); ok && token.Valid {
+		if issuer != "" && claims.Issuer != issuer {
+			pamLog("issuer verification failed %s != %s", issuer, claims.Issuer)
+			return "", AuthError
+		}
+		return claims.Subject+domain, AuthSuccess
+	}
+
+	return "", AuthError
 }
 
 func pamAuthenticate(uid int, username string, authToken string, argv []string) (string, AuthResult) {
 	runtime.GOMAXPROCS(1)
 
-	var clientId string
-	var providerUrl string
+	var alg string
+	var secret string
+	var issuer string
+	var domain string
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
 		switch opt[0] {
-		case "client_id":
-			clientId = opt[1]
-			pamLog("client id set to %s", clientId)
-		case "provider_url":
-			providerUrl = opt[1]
-			pamLog("provider url set to %s", providerUrl)
+		case "secret":
+			secret = opt[1]
+			pamLog("secret set")
+		case "alg":
+			alg = opt[1]
+			pamLog("alg is set to %s", alg)
+		case "issuer":
+			issuer = opt[1]
+			pamLog("issuer is set to %s", issuer)
+		case "domain":
+			domain = opt[1]
+			pamLog("domain is set to %s", domain)
 		default:
 			pamLog("unkown option: %s\n", opt[0])
 		}
 	}
 
-	if len(clientId) == 0 || len(providerUrl) == 0 {
-		pamLog("client_id and/or provider_url not set")
+	if len(secret) == 0 || len(alg) == 0 {
+		pamLog("secret and/or alg not set")
 		return "", AuthError
 	}
 
-	return authenticate(uid, username, authToken, clientId, providerUrl)
+	return authenticate(uid, username, authToken, secret, alg, issuer, domain)
 }
 
 func main() {}
