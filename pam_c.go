@@ -58,11 +58,11 @@ char *get_user(pam_handle_t *pamh) {
 }
 
 // set_user sets the user in the pam handle.
-int set_user(pam_handle_t *pamh, const user *char) {
+int set_user(pam_handle_t *pamh, const char *user) {
   if (!pamh)
     return PAM_SYSTEM_ERR;
 
-  return pam_set_item(pamh, PAM_USER, user)
+  return pam_set_item(pamh, PAM_USER, user);
 }
 
 // get_authtok pulls the authentication token out of the pam handle.

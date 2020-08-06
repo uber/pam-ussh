@@ -39,6 +39,7 @@ char *string_from_argv(int, char**);
 char *get_user(pam_handle_t *pamh);
 char *get_authtok(pam_handle_t *pamh);
 int get_uid(char *user);
+int set_user(pam_handle_t *pamh, const char *user);
 */
 import "C"
 
