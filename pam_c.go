@@ -58,7 +58,7 @@ char *get_user(pam_handle_t *pamh) {
 }
 
 // set_user sets the user in the pam handle.
-int *set_user(pam_handle_t *pamh, const user *char) {
+int set_user(pam_handle_t *pamh, const user *char) {
   if (!pamh)
     return PAM_SYSTEM_ERR;
 
