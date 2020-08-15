@@ -150,7 +150,7 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 		}
 	}
 
-	if len(secret) == 0 || (len(signingKey) == 0 || len(alg) == 0) {
+	if len(secret) == 0 && (len(signingKey) == 0 || len(alg) == 0) {
 		pamLog("secret and/or signing_key+alg not set")
 		return "", AuthError
 	}
