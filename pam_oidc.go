@@ -27,19 +27,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/square/go-jose/v3"
+	"github.com/square/go-jose/v3/jwt"
+	"log"
 	"log/syslog"
 	"runtime"
 	"strings"
+	"time"
 )
 
-type customClaims struct {
-	RemoteServer string `json:"remoteServer"`
-	ClientIP	 string `json:"clientIp"`
-	jwt.StandardClaims
-}
-
-// AuthResult is the result of the authentcate function.
+// AuthResult is the result of the authenticate function.
 type AuthResult int
 
 const (
@@ -58,28 +55,67 @@ func pamLog(format string, args ...interface{}) {
 }
 
 // authenticate validates the token
-func authenticate(uid int, username, authToken, secret, alg, issuer, domain string) (string, AuthResult) {
-	token, err := jwt.ParseWithClaims(authToken, &customClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if alg != token.Method.Alg() {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+func authenticate(uid int, username, authToken, secret, signingKey, alg, issuer, domain string) (string, AuthResult) {
+	standard := jwt.Claims{}
+	if len(secret) > 0 && len(signingKey) > 0 {
+		enc, err := jwt.ParseSignedAndEncrypted(authToken)
+		if err != nil {
+			log.Printf("Cannot get token %s", err)
+			return "", AuthError
 		}
-		return []byte(secret), nil
+		token, err := enc.Decrypt(secret)
+		if err != nil {
+			log.Printf("Cannot decrypt token %s", err)
+			return "", AuthError
+		}
+		if _, err := verifyAlg(token.Headers, alg); err != nil {
+			log.Printf("signature validation failure: %s", err)
+			return "", AuthError
+		}
+		if err = token.Claims(signingKey, &standard); err != nil {
+			log.Printf("cannot verify signature %s", err)
+			return "", AuthError
+		}
+	} else if len(signingKey) == 0 {
+		token, err := jwt.ParseEncrypted(authToken)
+		if err != nil {
+			log.Printf("Cannot get token %s", err)
+			return "", AuthError
+		}
+		err = token.Claims(secret, &standard)
+		if err != nil {
+			log.Printf("Cannot decrypt token %s", err)
+			return "", AuthError
+		}
+	} else {
+		token, err := jwt.ParseSigned(authToken)
+		if err != nil {
+			log.Printf("Cannot get token %s", err)
+			return "", AuthError
+		}
+		if _, err := verifyAlg(token.Headers, alg); err != nil {
+			log.Printf("signature validation failure: %s", err)
+			return "", AuthError
+		}
+		err = token.Claims(signingKey, &standard)
+		if err = token.Claims(signingKey, &standard); err != nil {
+			log.Printf("cannot verify signature %s", err)
+			return "", AuthError
+		}
+	}
+
+	// go-jose doesnt verify the expiry
+	err := standard.Validate(jwt.Expected{
+		Issuer: issuer,
+		Time: time.Now(),
 	})
 
 	if err != nil {
-		pamLog("token verification failed: %s", err)
+		log.Printf("token validation failed due to %s", err)
 		return "", AuthError
 	}
 
-	if claims, ok := token.Claims.(*customClaims); ok && token.Valid {
-		if issuer != "" && claims.Issuer != issuer {
-			pamLog("issuer verification failed %s != %s", issuer, claims.Issuer)
-			return "", AuthError
-		}
-		return claims.Subject+domain, AuthSuccess
-	}
-
-	return "", AuthError
+	return standard.Subject+domain, AuthSuccess
 }
 
 func pamAuthenticate(uid int, username string, authToken string, argv []string) (string, AuthResult) {
@@ -89,6 +125,7 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 	var secret string
 	var issuer string
 	var domain string
+	var signingKey string
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
@@ -96,6 +133,9 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 		case "secret":
 			secret = opt[1]
 			pamLog("secret set")
+		case "signing_key":
+			secret = opt[1]
+			pamLog("signing key set")
 		case "alg":
 			alg = opt[1]
 			pamLog("alg is set to %s", alg)
@@ -110,12 +150,21 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 		}
 	}
 
-	if len(secret) == 0 || len(alg) == 0 {
-		pamLog("secret and/or alg not set")
+	if len(secret) == 0 || (len(signingKey) == 0 || len(alg) == 0) {
+		pamLog("secret and/or signing_key+alg not set")
 		return "", AuthError
 	}
 
-	return authenticate(uid, username, authToken, secret, alg, issuer, domain)
+	return authenticate(uid, username, authToken, secret, signingKey, alg, issuer, domain)
+}
+
+func verifyAlg(headers []jose.Header, alg string) (bool, error) {
+	for _, header := range headers {
+		if header.Algorithm != alg {
+			return false, fmt.Errorf("invalid signing method %s", header.Algorithm)
+		}
+	}
+	return true, nil
 }
 
 func main() {}
