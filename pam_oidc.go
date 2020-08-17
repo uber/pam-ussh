@@ -29,7 +29,6 @@ import (
 	"fmt"
 	"github.com/square/go-jose/v3"
 	"github.com/square/go-jose/v3/jwt"
-	"log"
 	"log/syslog"
 	"runtime"
 	"strings"
@@ -64,46 +63,46 @@ func authenticate(username, authToken, secret, signingKey, alg, issuer, domain s
 	if len(secret) > 0 && len(signingKey) > 0 {
 		enc, err := jwt.ParseSignedAndEncrypted(authToken)
 		if err != nil {
-			log.Printf("Cannot get token %s", err)
+			pamLog("Cannot get token %s", err)
 			return "", AuthError
 		}
 		token, err := enc.Decrypt(secret)
 		if err != nil {
-			log.Printf("Cannot decrypt token %s", err)
+			pamLog("Cannot decrypt token %s", err)
 			return "", AuthError
 		}
 		if _, err := verifyAlg(token.Headers, alg); err != nil {
-			log.Printf("signature validation failure: %s", err)
+			pamLog("signature validation failure: %s", err)
 			return "", AuthError
 		}
 		if err = token.Claims(signingKey, &standard); err != nil {
-			log.Printf("cannot verify signature %s", err)
+			pamLog("cannot verify signature %s", err)
 			return "", AuthError
 		}
 	} else if len(signingKey) == 0 {
 		token, err := jwt.ParseEncrypted(authToken)
 		if err != nil {
-			log.Printf("Cannot get token %s", err)
+			pamLog("Cannot get token %s", err)
 			return "", AuthError
 		}
 		err = token.Claims(secret, &standard)
 		if err != nil {
-			log.Printf("Cannot decrypt token %s", err)
+			pamLog("Cannot decrypt token %s", err)
 			return "", AuthError
 		}
 	} else {
 		token, err := jwt.ParseSigned(authToken)
 		if err != nil {
-			log.Printf("Cannot get token %s", err)
+			pamLog("Cannot get token %s", err)
 			return "", AuthError
 		}
 		if _, err := verifyAlg(token.Headers, alg); err != nil {
-			log.Printf("signature validation failure: %s", err)
+			pamLog("signature validation failure: %s", err)
 			return "", AuthError
 		}
 		err = token.Claims(signingKey, &standard)
 		if err = token.Claims(signingKey, &standard); err != nil {
-			log.Printf("cannot verify signature %s", err)
+			pamLog("cannot verify signature %s", err)
 			return "", AuthError
 		}
 	}
@@ -115,10 +114,12 @@ func authenticate(username, authToken, secret, signingKey, alg, issuer, domain s
 	})
 
 	if err != nil {
-		log.Printf("token validation failed due to %s", err)
+		pamLog("token validation failed due to %s", err)
 		return "", AuthError
 	}
 
+	pamLog("token validation succeeded for %s", standard.Subject)
+	
 	return standard.Subject+domain, AuthSuccess
 }
 
