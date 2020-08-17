@@ -67,13 +67,14 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 	}
 	defer C.free(unsafe.Pointer(cUsername))
 
-	cAuthToken := C.get_authtok(pamh)
+	/*cAuthToken := C.get_authtok(pamh)
 	if cAuthToken == nil {
 		return C.PAM_AUTH_ERR
 	}
 	defer C.free(unsafe.Pointer(cAuthToken))
 
-	authToken := C.GoString(cAuthToken)
+	authToken := C.GoString(cAuthToken)*/
+	authToken := ""
 	userName := C.GoString(cUsername)
 
 	name, r := pamAuthenticate(userName, authToken, sliceFromArgv(argc, argv))
