@@ -55,7 +55,11 @@ func pamLog(format string, args ...interface{}) {
 }
 
 // authenticate validates the token
-func authenticate(uid int, username, authToken, secret, signingKey, alg, issuer, domain string) (string, AuthResult) {
+func authenticate(username, authToken, secret, signingKey, alg, issuer, domain string) (string, AuthResult) {
+	if authToken == "" {
+		authToken = username
+	}
+
 	standard := jwt.Claims{}
 	if len(secret) > 0 && len(signingKey) > 0 {
 		enc, err := jwt.ParseSignedAndEncrypted(authToken)
@@ -118,7 +122,7 @@ func authenticate(uid int, username, authToken, secret, signingKey, alg, issuer,
 	return standard.Subject+domain, AuthSuccess
 }
 
-func pamAuthenticate(uid int, username string, authToken string, argv []string) (string, AuthResult) {
+func pamAuthenticate(username string, authToken string, argv []string) (string, AuthResult) {
 	runtime.GOMAXPROCS(1)
 
 	var alg string
@@ -155,7 +159,7 @@ func pamAuthenticate(uid int, username string, authToken string, argv []string) 
 		return "", AuthError
 	}
 
-	return authenticate(uid, username, authToken, secret, signingKey, alg, issuer, domain)
+	return authenticate(username, authToken, secret, signingKey, alg, issuer, domain)
 }
 
 func verifyAlg(headers []jose.Header, alg string) (bool, error) {
