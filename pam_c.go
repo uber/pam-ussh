@@ -55,7 +55,7 @@ char *get_user(pam_handle_t *pamh) {
     return NULL;
 
   if (!user)
-	return NULL
+	return NULL;
 
   return strdup(user);
 }
@@ -79,7 +79,7 @@ char *get_authtok(pam_handle_t *pamh) {
     return NULL;
 
   if (!authtok)
-	return NULL
+	return NULL;
 
   return strdup(authtok);
 }
