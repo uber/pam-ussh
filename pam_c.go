@@ -54,6 +54,9 @@ char *get_user(pam_handle_t *pamh) {
   if ((pam_err = pam_get_item(pamh, PAM_USER, (const void**)&user)) != PAM_SUCCESS)
     return NULL;
 
+  if (!user)
+	return NULL
+
   return strdup(user);
 }
 
@@ -74,6 +77,9 @@ char *get_authtok(pam_handle_t *pamh) {
   const char *authtok;
   if ((pam_err = pam_get_item(pamh, PAM_AUTHTOK, (const void**)&authtok)) != PAM_SUCCESS)
     return NULL;
+
+  if (!authtok)
+	return NULL
 
   return strdup(authtok);
 }
