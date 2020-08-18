@@ -53,7 +53,7 @@ func pamLog(format string, args ...interface{}) {
 	l.Warning(fmt.Sprintf(format, args...))
 }
 
-// authenticate validates the token
+// authenticate validates the token and returns the user name
 func authenticate(username, authToken, secret, signingKey, alg, issuer, domain string) (string, AuthResult) {
 	if authToken == "" {
 		authToken = username
@@ -119,7 +119,7 @@ func authenticate(username, authToken, secret, signingKey, alg, issuer, domain s
 	}
 
 	pamLog("token validation succeeded for %s", standard.Subject)
-	
+
 	return standard.Subject+domain, AuthSuccess
 }
 
