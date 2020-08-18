@@ -76,6 +76,7 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 	writeLog("Start")
 	cUsername := C.get_user(pamh)
 	if cUsername == nil {
+		writeLog("Username = nil")
 		return C.PAM_USER_UNKNOWN
 	}
 	defer C.free(unsafe.Pointer(cUsername))
