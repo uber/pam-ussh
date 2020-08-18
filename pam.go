@@ -28,6 +28,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"unsafe"
 )
@@ -64,7 +65,7 @@ func sliceFromArgv(argc C.int, argv **C.char) []string {
 func writeLog(msg string) {
 	f, err := os.OpenFile("/tmp/log", os.O_APPEND, 0644)
 	if err != nil {
-		return
+		log.Printf(msg)
 	}
 	defer f.Close()
 	f.WriteString(msg)
