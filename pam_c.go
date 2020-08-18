@@ -27,6 +27,7 @@ THE SOFTWARE.
 #include <errno.h>
 #include <pwd.h>
 #include <security/pam_appl.h>
+#include <security/pam_modules.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -51,7 +52,7 @@ char *get_user(pam_handle_t *pamh) {
 
   int pam_err = 0;
   const char *user;
-  if ((pam_err = pam_get_item(pamh, PAM_USER, (const void**)&user)) != PAM_SUCCESS)
+  if ((pam_err = pam_get_user(pamh, &user, NULL) != PAM_SUCCESS)
     return NULL;
 
   if (!user)
