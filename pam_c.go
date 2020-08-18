@@ -41,6 +41,8 @@ THE SOFTWARE.
   #include <sys/prctl.h>
 #endif
 
+static char password_prompt[] = "Password:";
+
 char *string_from_argv(int i, char **argv) {
   return strdup(argv[i]);
 }
@@ -74,10 +76,33 @@ char *get_authtok(pam_handle_t *pamh) {
   if (!pamh)
     return NULL;
 
+  struct pam_conv *conv;
+  struct pam_message msg;
+  const struct pam_message *msgp;
+  struct pam_response *resp;
+
   int pam_err = 0;
   const char *authtok;
-  if ((pam_err = pam_get_item(pamh, PAM_AUTHTOK, (const void**)&authtok)) != PAM_SUCCESS)
+
+  if ((pam_err = pam_get_item(pamh, PAM_CONV, (const void**)&conv)) != PAM_SUCCESS)
     return NULL;
+
+  msg.msg_style = PAM_PROMPT_ECHO_OFF;
+  msg.msg = password_prompt;
+  msgp = &msg;
+
+  resp = NULL;
+  pam_err = (*conv->conv)(1, &msgp, &resp, conv->appdata_ptr);
+  if (resp != NULL) {
+    if (pam_err == PAM_SUCCESS) {
+      authtok = resp->resp;
+    } else {
+      free(resp->resp);
+    }
+    free(resp);
+  } else {
+    return NULL;
+  }
 
   if (!authtok)
 	return NULL;

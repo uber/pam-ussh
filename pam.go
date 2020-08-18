@@ -27,9 +27,6 @@ package main
 // code in here can't be tested because it relies on cgo. :(
 
 import (
-	"fmt"
-	"log"
-	"os"
 	"unsafe"
 )
 
@@ -62,21 +59,10 @@ func sliceFromArgv(argc C.int, argv **C.char) []string {
 	return r
 }
 
-func writeLog(msg string) {
-	f, err := os.OpenFile("/tmp/log", os.O_APPEND, 0644)
-	if err != nil {
-		log.Printf(msg)
-	}
-	defer f.Close()
-	f.WriteString(msg)
-}
-
 //export pam_sm_authenticate
 func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char) C.int {
-	writeLog("Start")
 	cUsername := C.get_user(pamh)
 	if cUsername == nil {
-		writeLog("Username = nil")
 		return C.PAM_USER_UNKNOWN
 	}
 	defer C.free(unsafe.Pointer(cUsername))
@@ -86,8 +72,6 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 
 	authToken := C.GoString(cAuthToken)
 	userName := C.GoString(cUsername)
-
-	writeLog(fmt.Sprintf("user: '%s', password: '%s'", userName, authToken))
 
 	name, r := pamAuthenticate(userName, authToken, sliceFromArgv(argc, argv))
 	if r == AuthError {
