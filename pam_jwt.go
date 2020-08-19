@@ -61,7 +61,7 @@ func authenticateByUrl(url, authToken string) (string, AuthResult) {
 		Timeout: time.Second * 2,
 	}
 
-	req, err := http.NewRequest(http.MethodGet, url + authToken, nil)
+	req, err := http.NewRequest(http.MethodGet, url + "=" + authToken, nil)
 	if err != nil {
 		return "", AuthError
 	}

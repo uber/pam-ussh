@@ -25,7 +25,7 @@ Building:
   go test -cover
   PASS
   coverage: 71.8% of statements
-  ok  	_/home/pmoody/tmp/pam-ussh	0.205s
+  ok  	_/home/pmoody/tmp/pam-jwt	0.205s
 
   $
 ```
