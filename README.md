@@ -38,7 +38,8 @@ Usage:
 
 ```
   $ grep auth /etc/pam.d/xrdp-sesman
-  auth sufficient                 pam_jwt.so secret=<encryption_key> signing_key=<signing_key> alg=<alg> issuer=issuer
+  auth sufficient                 pam_wt.so token_url=https://something?access_token= 
+  # auth sufficient                 pam_jwt.so secret=<encryption_key> signing_key=<signing_key> alg=<alg> issuer=issuer
   auth include                    password-auth
 ```
 

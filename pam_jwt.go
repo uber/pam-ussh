@@ -26,10 +26,13 @@ THE SOFTWARE.
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/square/go-jose/v3"
 	"github.com/square/go-jose/v3/jwt"
+	"io/ioutil"
 	"log/syslog"
+	"net/http"
 	"runtime"
 	"strings"
 	"time"
@@ -46,17 +49,67 @@ const (
 )
 
 func pamLog(format string, args ...interface{}) {
-	l, err := syslog.New(syslog.LOG_AUTH|syslog.LOG_WARNING, "pam-oidc")
+	l, err := syslog.New(syslog.LOG_AUTH|syslog.LOG_WARNING, "pam-jwt")
 	if err != nil {
 		return
 	}
 	l.Warning(fmt.Sprintf(format, args...))
 }
 
+func authenticateByUrl(url, authToken string) (string, AuthResult) {
+	c := http.Client{
+		Timeout: time.Second * 2,
+	}
+
+	req, err := http.NewRequest(http.MethodGet, url + authToken, nil)
+	if err != nil {
+		return "", AuthError
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return "", AuthError
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		pamLog("Authentication failed")
+		return "", AuthError
+	}
+
+	if resp.Body != nil {
+		defer req.Body.Close()
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		pamLog("Cannot read response from server. Failing authentication.")
+		return "", AuthError
+	}
+
+	standard := jwt.Claims{}
+	err = json.Unmarshal(body, &standard)
+
+	if err != nil {
+		pamLog("Cannot unmarshal JWT token from response due to %s", err)
+		return "", AuthError
+	}
+
+	if standard.Subject == "" {
+		pamLog("Subject not present in response")
+		return "", AuthError
+	}
+
+	return standard.Subject, AuthSuccess
+}
+
 // authenticate validates the token and returns the user name
-func authenticate(username, authToken, secret, signingKey, alg, issuer, domain string) (string, AuthResult) {
+func authenticate(username, url, authToken, secret, signingKey, alg, issuer, domain string) (string, AuthResult) {
 	if authToken == "" {
 		authToken = username
+	}
+
+	if url != "" {
+		return authenticateByUrl(url, authToken)
 	}
 
 	standard := jwt.Claims{}
@@ -131,6 +184,7 @@ func pamAuthenticate(username string, authToken string, argv []string) (string, 
 	var issuer string
 	var domain string
 	var signingKey string
+	var url string
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
@@ -150,17 +204,22 @@ func pamAuthenticate(username string, authToken string, argv []string) (string, 
 		case "domain":
 			domain = opt[1]
 			pamLog("domain is set to %s", domain)
+		case "token_url":
+			url = opt[1]
+			pamLog("token url set to %s", url)
 		default:
 			pamLog("unkown option: %s\n", opt[0])
 		}
 	}
 
-	if len(secret) == 0 && (len(signingKey) == 0 || len(alg) == 0) {
-		pamLog("secret and/or signing_key+alg not set")
-		return "", AuthError
+	if len(url) == 0 {
+		if len(secret) == 0 && (len(signingKey) == 0 || len(alg) == 0) {
+			pamLog("secret and/or signing_key+alg not set")
+			return "", AuthError
+		}
 	}
 
-	return authenticate(username, authToken, secret, signingKey, alg, issuer, domain)
+	return authenticate(username, url, authToken, secret, signingKey, alg, issuer, domain)
 }
 
 func verifyAlg(headers []jose.Header, alg string) (bool, error) {
