@@ -26,6 +26,7 @@ THE SOFTWARE.
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"github.com/square/go-jose/v3"
@@ -48,6 +49,8 @@ const (
 	AuthSuccess
 )
 
+var ignoreCertificate bool
+
 func pamLog(format string, args ...interface{}) {
 	l, err := syslog.New(syslog.LOG_AUTH|syslog.LOG_WARNING, "pam-jwt")
 	if err != nil {
@@ -57,7 +60,13 @@ func pamLog(format string, args ...interface{}) {
 }
 
 func authenticateByUrl(url, authToken string) (string, AuthResult) {
+
 	c := http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: ignoreCertificate,
+			},
+		},
 		Timeout: time.Second * 2,
 	}
 
@@ -207,6 +216,11 @@ func pamAuthenticate(username string, authToken string, argv []string) (string, 
 		case "token_url":
 			url = opt[1]
 			pamLog("token url set to %s", url)
+		case "insecure":
+			if opt[1] == "true" || opt[1] == "1" {
+				ignoreCertificate = true
+			}
+			pamLog("not verifying certificates")
 		default:
 			pamLog("unkown option: %s\n", opt[0])
 		}
