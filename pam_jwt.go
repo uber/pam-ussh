@@ -86,7 +86,7 @@ func authenticateByUrl(url, authToken string) (string, AuthResult) {
 	}
 
 	if resp.Body != nil {
-		defer req.Body.Close()
+		defer resp.Body.Close()
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -108,6 +108,8 @@ func authenticateByUrl(url, authToken string) (string, AuthResult) {
 		return "", AuthError
 	}
 
+	pamLog("Authentication succeeded for %s", standard.Subject)
+	
 	return standard.Subject, AuthSuccess
 }
 
