@@ -109,7 +109,7 @@ func authenticateByUrl(url, authToken string) (string, AuthResult) {
 	}
 
 	pamLog("Authentication succeeded for %s", standard.Subject)
-	
+
 	return standard.Subject, AuthSuccess
 }
 
