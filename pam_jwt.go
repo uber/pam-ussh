@@ -59,8 +59,7 @@ func pamLog(format string, args ...interface{}) {
 	l.Warning(fmt.Sprintf(format, args...))
 }
 
-func authenticateByUrl(url, authToken string) (string, AuthResult) {
-
+func authenticateByUrl(url, username, authToken, domain string, verifyUser bool) (string, AuthResult) {
 	c := http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -108,21 +107,30 @@ func authenticateByUrl(url, authToken string) (string, AuthResult) {
 		return "", AuthError
 	}
 
-	pamLog("Authentication succeeded for %s", standard.Subject)
+	if verifyUser && (
+		standard.Subject != username || standard.Subject+domain != username) {
+		pamLog("Subject does not equal user name")
+	}
 
-	return standard.Subject, AuthSuccess
+	pamLog("Authentication succeeded for %s", standard.Subject+domain)
+
+	return standard.Subject+domain, AuthSuccess
 }
 
 // authenticate validates the token and returns the user name
-func authenticate(username, url, authToken, secret, signingKey, alg, issuer, domain string) (string, AuthResult) {
+func authenticate(username, url, authToken, secret, signingKey, alg, issuer, domain string, verifyUser bool) (string, AuthResult) {
 	if authToken == "" {
 		authToken = username
 	}
 
 	if url != "" {
-		return authenticateByUrl(url, authToken)
+		return authenticateByUrl(url, username, authToken, domain, verifyUser)
 	}
 
+	return authenticateByJwt(username, authToken, secret, signingKey, alg, issuer, domain, verifyUser)
+}
+
+func authenticateByJwt(username, authToken, secret, signingKey, alg, issuer, domain string, verifyUser bool) (string, AuthResult) {
 	standard := jwt.Claims{}
 	if len(secret) > 0 && len(signingKey) > 0 {
 		enc, err := jwt.ParseSignedAndEncrypted(authToken)
@@ -196,6 +204,7 @@ func pamAuthenticate(username string, authToken string, argv []string) (string, 
 	var domain string
 	var signingKey string
 	var url string
+	var verifyUser bool = true
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
@@ -223,8 +232,12 @@ func pamAuthenticate(username string, authToken string, argv []string) (string, 
 				ignoreCertificate = true
 			}
 			pamLog("not verifying certificates")
+		case "verify_user":
+			if opt[1] == "false" || opt[1] == "0" {
+				verifyUser = false
+			}
 		default:
-			pamLog("unkown option: %s\n", opt[0])
+			pamLog("unknown option: %s\n", opt[0])
 		}
 	}
 
@@ -235,7 +248,7 @@ func pamAuthenticate(username string, authToken string, argv []string) (string, 
 		}
 	}
 
-	return authenticate(username, url, authToken, secret, signingKey, alg, issuer, domain)
+	return authenticate(username, url, authToken, secret, signingKey, alg, issuer, domain, verifyUser)
 }
 
 func verifyAlg(headers []jose.Header, alg string) (bool, error) {
