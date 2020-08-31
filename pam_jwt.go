@@ -108,7 +108,7 @@ func authenticateByUrl(url, username, authToken, domain string, verifyUser bool)
 	}
 
 	if verifyUser && (
-		standard.Subject != username || standard.Subject+domain != username) {
+		standard.Subject != username && standard.Subject+domain != username) {
 		pamLog("Subject %s does not equal user name %s", standard.Subject, username)
 		return "", AuthError
 	}
