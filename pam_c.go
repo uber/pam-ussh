@@ -154,6 +154,24 @@ int change_euid(int uid) {
   return seteuid(uid);
 }
 
+// define environment variable
+int define_var(pam_handle_t *pamh, char *name, char *val) {
+  char *envvar;
+  int retval = PAM_SUCCESS;
+
+  if (asprintf(&envvar, "%s=%s", name, val) < 0) {
+    return PAM_BUF_ERR;
+  }
+  retval = pam_putenv(pamh, envvar);
+
+  return retval;
+}
+
+// undefine environment variable
+int undefine_var(pam_handle_t *pamh, char *name) {
+  return pam_putenv(pamh, name);
+}
+
 int disable_ptrace() {
 #ifdef __APPLE__
   return ptrace(PT_DENY_ATTACH, 0, 0, 0);

@@ -40,6 +40,8 @@ char *get_user(pam_handle_t *pamh);
 char *get_authtok(pam_handle_t *pamh);
 int get_uid(char *user);
 int set_user(pam_handle_t *pamh, const char *user);
+int define_var(pam_handle_t *pamh, char *name, char *val);
+int undefine_var(pam_handle_t *pamh, char *name);
 */
 import "C"
 
@@ -61,6 +63,13 @@ func sliceFromArgv(argc C.int, argv **C.char) []string {
 
 //export pam_sm_authenticate
 func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char) C.int {
+	envName := C.CString("PAM_JWT_AUTH")
+	envVal := C.CString("1")
+	defer C.free(unsafe.Pointer(envName))
+	defer C.free(unsafe.Pointer(envVal))
+
+	C.undefine_var(pamh, envName)
+
 	cUsername := C.get_user(pamh)
 	if cUsername == nil {
 		return C.PAM_USER_UNKNOWN
@@ -90,6 +99,7 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 		C.set_user(pamh, cName)
 	}
 
+	C.define_var(pamh, envName, envVal)
 	return C.PAM_SUCCESS
 }
 
