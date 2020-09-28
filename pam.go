@@ -101,7 +101,7 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 		C.set_user(pamh, cName)
 	}
 
-	C.define_var(pamh, envName, envVal)
+	C.define_var(pamh, envName, envValYes)
 	return C.PAM_SUCCESS
 }
 
