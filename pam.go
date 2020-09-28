@@ -64,11 +64,13 @@ func sliceFromArgv(argc C.int, argv **C.char) []string {
 //export pam_sm_authenticate
 func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char) C.int {
 	envName := C.CString("PAM_JWT_AUTH")
-	envVal := C.CString("1")
+	envValYes := C.CString("1")
+	envValNo := C.CString("0")
 	defer C.free(unsafe.Pointer(envName))
-	defer C.free(unsafe.Pointer(envVal))
+	defer C.free(unsafe.Pointer(envValYes))
+	defer C.free(unsafe.Pointer(envValNo))
 
-	C.undefine_var(pamh, envName)
+	C.define_var(pamh, envName, envValNo)
 
 	cUsername := C.get_user(pamh)
 	if cUsername == nil {
