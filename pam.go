@@ -70,8 +70,6 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 	defer C.free(unsafe.Pointer(envValYes))
 	defer C.free(unsafe.Pointer(envValNo))
 
-	C.define_var(pamh, envName, envValNo)
-
 	cUsername := C.get_user(pamh)
 	if cUsername == nil {
 		return C.PAM_USER_UNKNOWN
@@ -86,6 +84,7 @@ func pam_sm_authenticate(pamh *C.pam_handle_t, flags, argc C.int, argv **C.char)
 
 	name, r := pamAuthenticate(userName, authToken, sliceFromArgv(argc, argv))
 	if r == AuthError {
+		C.define_var(pamh, envName, envValNo)
 		return C.PAM_AUTH_ERR
 	}
 
