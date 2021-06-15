@@ -159,6 +159,11 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 			continue
 		}
 
+		if !c.IsUserAuthority(cert.SignatureKey) {
+			pamLog("certificate signed by unrecognized authority")
+			continue
+		}
+
 		// for the ssh agent to sign some data validating that they do in fact
 		// have the private key
 		randBytes := make([]byte, 32)
