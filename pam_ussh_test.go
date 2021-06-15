@@ -229,3 +229,37 @@ func WithSSHAgent(fn func(agent.Agent)) {
 		fn(a)
 	})
 }
+
+func TestWithWrongCA(t *testing.T) {
+	WithTempDir(func(dir string) {
+		ca := path.Join(dir, "ca")
+		caPamOpt := fmt.Sprintf("ca_file=%s", ca)
+
+		// The correct CA is written to file for the pamAuthenticate function
+		correctCAKey, e := rsa.GenerateKey(rand.Reader, 1024)
+		require.NoError(t, e)
+		correctCAPub, e := ssh.NewPublicKey(&correctCAKey.PublicKey)
+		require.NoError(t, e)
+		e = ioutil.WriteFile(ca, ssh.MarshalAuthorizedKey(correctCAPub), 0444)
+
+		// The wrong CA is just used for signing the certificate
+		wrongCAKey, e := rsa.GenerateKey(rand.Reader, 1024)
+		require.NoError(t, e)
+		wrongSigner, e := ssh.NewSignerFromKey(wrongCAKey)
+		require.NoError(t, e)
+
+		// Generate a user keypair
+		userPriv, e := rsa.GenerateKey(rand.Reader, 1024)
+		require.NoError(t, e)
+		userPub, e := ssh.NewPublicKey(&userPriv.PublicKey)
+		require.NoError(t, e)
+
+		// Sign the user keypair with the wrong CA and try to verify it
+		c := signedCert(userPub, wrongSigner, "foober", []string{"group:foober"})
+		WithSSHAgent(func(a agent.Agent) {
+			a.Add(agent.AddedKey{PrivateKey: userPriv, Certificate: c})
+			r := pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt})
+			require.Equal(t, AuthError, r, "authenticate succeeded when it should have failed")
+		})
+	})
+}
