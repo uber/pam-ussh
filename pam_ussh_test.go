@@ -51,6 +51,18 @@ func TestLoadPrincipals(t *testing.T) {
 		require.True(t, ok)
 	})
 }
+func TestExecutePrincipalCommand(t *testing.T) {
+	WithTempDir(func(dir string) {
+		p := path.Join(dir, "script")
+		e := ioutil.WriteFile(p, []byte("#!/bin/bash\necho \"test\""), 0755)
+		require.NoError(t, e)
+
+		r, e := executePrincipalsCommand(p)
+		require.NoError(t, e)
+		_, ok := r["test"]
+		require.True(t, ok)
+	})
+}
 
 func TestNoAuthSock(t *testing.T) {
 	oldAgent := os.Getenv("SSH_AUTH_SOCK")
@@ -109,6 +121,7 @@ func TestPamAuthorize(t *testing.T) {
 		ca := path.Join(dir, "ca")
 		caPamOpt := fmt.Sprintf("ca_file=%s", ca)
 		principals := path.Join(dir, "principals")
+		principalsCommand := path.Join(dir, "principalsCommand")
 
 		k, e := rsa.GenerateKey(rand.Reader, 1024)
 		require.NoError(t, e)
@@ -123,6 +136,9 @@ func TestPamAuthorize(t *testing.T) {
 		c := signedCert(userPub, signer, "foober", []string{"group:foober"})
 
 		e = ioutil.WriteFile(principals, []byte("group:foober"), 0444)
+		require.NoError(t, e)
+
+		e = ioutil.WriteFile(principalsCommand, []byte("#!/bin/bash\necho 'foober'"), 0755)
 		require.NoError(t, e)
 
 		WithSSHAgent(func(a agent.Agent) {
@@ -156,6 +172,23 @@ func TestPamAuthorize(t *testing.T) {
 			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
 				"group=nosuchgroup"})
 			require.Equal(t, AuthSuccess, r)
+
+			// positive test with authorized_principals_command pam option
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
+				fmt.Sprintf("authorized_principals_command=%s", principalsCommand)})
+			require.Equal(t, AuthSuccess, r)
+
+			// negative test with authorized_principals_command pam option
+			e = ioutil.WriteFile(principalsCommand, []byte("#!/bin/bash\necho 'duber'"), 0555)
+			require.NoError(t, e)
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
+				fmt.Sprintf("authorized_principals_command=%s", principalsCommand)})
+			require.Equal(t, AuthError, r)
+
+			// negative test with bad authorized_principals_command pam option
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
+				"authorized_principals_command=foober"})
+			require.Equal(t, AuthError, r)
 		})
 	})
 }
