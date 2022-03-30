@@ -4,7 +4,7 @@ NEED_SYMLINK := $(shell if ! stat -q .go/src/pam-ussh 2>&1 > /dev/null ; then ec
 module: test
 	GOPATH=${PWD}/.go go build -buildmode=c-shared -o ${MODULE}.so
 
-test: *.go .go/src
+test: .go/src *.go
 	GOPATH=${PWD}/.go go test -cover
 
 .go/src:
