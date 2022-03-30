@@ -34,6 +34,7 @@ import (
 	"log/syslog"
 	"net"
 	"os"
+	"os/exec"
 	"path"
 	"runtime"
 	"strings"
@@ -155,7 +156,16 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 			continue
 		}
 
-		if err := c.CheckCert(username, cert); err != nil {
+		// If a manual set of principals is provided, don't require
+		// the username to be in the certificate's principals
+		// Principals are verified at the end of this function
+		testedPrincipal := username
+		if len(principals) > 0 && len(cert.ValidPrincipals) > 0 {
+			testedPrincipal = cert.ValidPrincipals[0]
+		}
+
+		if err := c.CheckCert(testedPrincipal, cert); err != nil {
+			pamLog("Error validating cert: %v\n", err)
 			continue
 		}
 
@@ -216,6 +226,19 @@ func loadValidPrincipals(principals string) (map[string]struct{}, error) {
 	return p, nil
 }
 
+func executePrincipalsCommand(command string) (map[string]struct{}, error) {
+	args := strings.Split(command, " ")
+	out, err := exec.Command(args[0], args[1:]...).Output()
+	if err != nil {
+		return nil, err
+	}
+	p := make(map[string]struct{})
+	for _, principal := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		p[principal] = struct{}{}
+	}
+	return p, nil
+}
+
 func pamAuthenticate(w io.Writer, uid int, username string, argv []string) AuthResult {
 	runtime.GOMAXPROCS(1)
 
@@ -238,6 +261,13 @@ func pamAuthenticate(w io.Writer, uid int, username string, argv []string) AuthR
 			}
 		case "authorized_principals_file":
 			ap, err := loadValidPrincipals(opt[1])
+			if err != nil {
+				pamLog("%v", err)
+				return AuthError
+			}
+			authorizedPrincipals = ap
+		case "authorized_principals_command":
+			ap, err := executePrincipalsCommand(opt[1])
 			if err != nil {
 				pamLog("%v", err)
 				return AuthError
