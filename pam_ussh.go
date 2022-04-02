@@ -155,7 +155,16 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 			continue
 		}
 
-		if err := c.CheckCert(username, cert); err != nil {
+		// If a manual set of principals is provided, don't require
+		// the username to be in the certificate's principals
+		// Principals are verified at the end of this function
+		testedPrincipal := username
+		if len(principals) > 0 && len(cert.ValidPrincipals) > 0 {
+			testedPrincipal = cert.ValidPrincipals[0]
+		}
+
+		if err := c.CheckCert(testedPrincipal, cert); err != nil {
+			pamLog("Error validating cert: %v\n", err)
 			continue
 		}
 
