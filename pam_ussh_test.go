@@ -57,7 +57,7 @@ func TestNoAuthSock(t *testing.T) {
 	defer os.Setenv("SSH_AUTH_SOCK", oldAgent)
 	os.Unsetenv("SSH_AUTH_SOCK")
 	b := new(bytes.Buffer)
-	require.Equal(t, AuthError, authenticate(b, 0, "", "", nil))
+	require.Equal(t, AuthError, authenticate(b, 0, "r", "", nil))
 	require.Contains(t, b.String(), "No SSH_AUTH_SOCK")
 }
 
@@ -69,7 +69,7 @@ func TestBadAuthSock(t *testing.T) {
 		defer os.Setenv("SSH_AUTH_SOCK", oldAgent)
 		os.Setenv("SSH_AUTH_SOCK", s)
 		b := new(bytes.Buffer)
-		require.Equal(t, AuthError, authenticate(b, 0, "", "", nil))
+		require.Equal(t, AuthError, authenticate(b, 0, "r", "", nil))
 		require.Contains(t, b.String(), "connect: no such file or directory")
 	})
 }
@@ -156,6 +156,21 @@ func TestPamAuthorize(t *testing.T) {
 			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt,
 				"group=nosuchgroup"})
 			require.Equal(t, AuthSuccess, r)
+		})
+
+		c2 := signedCert(userPub, signer, "user", []string{"group:foober"})
+		WithSSHAgent(func(a agent.Agent) {
+			a.Add(agent.AddedKey{PrivateKey: userPriv, Certificate: c2})
+
+			// test without requiring the user principal
+			r := pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt, "no_require_user_principal", "authorized_principals=group:foober"})
+			require.Equal(t, AuthSuccess, r,
+				"authenticate failed but no_require_user_principal was true")
+
+			// test without requiring the user principal
+			r = pamAuthenticate(new(bytes.Buffer), getUID(), "foober", []string{caPamOpt, "authorized_principals=group:foober"})
+			require.Equal(t, AuthError, r,
+				"authenticate succeeded despite require_user_principal")
 		})
 	})
 }
