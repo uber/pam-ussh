@@ -67,7 +67,12 @@ func pamLog(format string, args ...interface{}) {
 
 // authenticate validates certs loaded on the ssh-agent at the other end of
 // AuthSock.
-func authenticate(w io.Writer, uid int, username, ca string, principals map[string]struct{}) AuthResult {
+func authenticate(w io.Writer, uid int, required_principal string, ca string, principals map[string]struct{}) AuthResult {
+	if len(principals) == 0 && len(required_principal) == 0 {
+		pamLog("requesting to authenticate with no required_principal and no principals")
+		return AuthError
+	}
+
 	authSock := os.Getenv("SSH_AUTH_SOCK")
 	if authSock == "" {
 		fmt.Fprint(w, "No SSH_AUTH_SOCK")
@@ -95,8 +100,9 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 		// if we're here, we probably can't stat the socket to get the owner uid
 		// to decorate the logs, but we might be able to read the parent directory.
 		ownerUID := ownerUID(path.Dir(authSock))
-		pamLog("error opening auth sock (sock owner: %d/%s) by (caller: %d/%s)",
-			ownerUID, getUsername(ownerUID), os.Getuid(), username)
+		currentUID := os.Getuid()
+		pamLog("error opening auth sock (sock owner uid: %d/%s) by (caller: %d/%s)",
+			ownerUID, getUsername(ownerUID), currentUID, getUsername(currentUID))
 		return AuthError
 	}
 
@@ -154,11 +160,32 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 		if !ok {
 			continue
 		}
-
-		if err := c.CheckCert(username, cert); err != nil {
-			continue
+		
+		certValidFor := ""
+		// Optionally, we may require that the cert be valid for a
+		// required_principal, typically the local username
+		if len(required_principal) > 0 {
+			if err := c.CheckCert(required_principal, cert); err != nil {
+				pamLog("certificate not valid for required principal")
+				continue
+			}
+			certValidFor = required_principal
 		}
 
+		// If `principals` is non-empty, the cert must be valid for at least one of `principals`
+		if len(principals) > 0 {
+			for p := range principals {
+				if err := c.CheckCert(p, cert); err != nil {
+					continue
+				}
+				certValidFor = p
+				break
+			}
+			if len(certValidFor) == 0 {
+				continue
+			}
+		}
+		
 		if !c.IsUserAuthority(cert.SignatureKey) {
 			pamLog("certificate signed by unrecognized authority")
 			continue
@@ -185,7 +212,7 @@ func authenticate(w io.Writer, uid int, username, ca string, principals map[stri
 
 		if len(principals) == 0 {
 			pamLog("Authentication succeeded for %q (cert %q, %d)",
-				username, cert.ValidPrincipals[0], cert.Serial)
+				certValidFor, cert.KeyId, cert.Serial)
 			return AuthSuccess
 		}
 
@@ -222,6 +249,7 @@ func pamAuthenticate(w io.Writer, uid int, username string, argv []string) AuthR
 	userCA := defaultUserCA
 	group := defaultGroup
 	authorizedPrincipals := make(map[string]struct{})
+	required_principal := username
 
 	for _, arg := range argv {
 		opt := strings.Split(arg, "=")
@@ -243,13 +271,15 @@ func pamAuthenticate(w io.Writer, uid int, username string, argv []string) AuthR
 				return AuthError
 			}
 			authorizedPrincipals = ap
+		case "no_require_user_principal":
+			required_principal = ""
 		default:
 			pamLog("unkown option: %s\n", opt[0])
 		}
 	}
-
+	
 	if len(group) == 0 || isMemberOf(group) {
-		return authenticate(w, uid, username, userCA, authorizedPrincipals)
+		return authenticate(w, uid, required_principal, userCA, authorizedPrincipals)
 	}
 
 	return AuthSuccess

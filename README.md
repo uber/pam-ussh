@@ -66,15 +66,22 @@ Runtime configuration options:
 * `group` - string, default, `""`
   If set, the user needs to be a member of this group in order to use this module.
 
+* `no_require_user_principal` - flag, true if present
+  If set, certificates do not have to be valid for a principal matching the local user in addition
+  to one of the principals listed in `authorized_principals` or `authorized_principals_file`.
 
 Example configuration:
 
-the following looks for a certificate on $SSH_AUTH_SOCK that have been signed by user_ca. Additionally,
-the user needs to have a principal on the certificate that's listed in /etc/ssh/root_authorized_principals
+1. The following looks for a certificate on `$SSH_AUTH_SOCK` that has been signed by `user_ca`. The certificate must be valid for at least one principal that's listed in `/etc/ssh/root_authorized_principals`.
+   ```
+   auth [success=1 default=ignore] /lib/security/pam_ussh.so ca_file=/etc/ssh/user_ca authorized_principals_file=/etc/ssh/root_authorized_principals
+   ```
 
-```
-auth [success=1 default=ignore] /lib/security/pam_ussh.so ca_file=/etc/ssh/user_ca authorized_principals_file=/etc/ssh/root_authorized_principals
-```
+1. The following looks for a certificate on `$SSH_AUTH_SOCK` that has been signed by `user_ca`. The certificate must be valid for at least one principal that's listed in `/etc/ssh/root_authorized_principals`. The certificate must also be valid for a principal matching the username of the target user.
+
+   ```
+   auth [success=1 default=ignore] /lib/security/pam_ussh.so ca_file=/etc/ssh/user_ca authorized_principals_file=/etc/ssh/root_authorized_principals
+   ```
 
 FAQ:
 
